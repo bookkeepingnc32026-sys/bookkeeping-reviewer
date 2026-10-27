@@ -2,8 +2,9 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { supabaseServer } from "@/lib/supabase/server";
 import { isAllowedRequestOrigin } from "@/lib/request-origin";
-import { AppUrlConfigurationError, getAuthCallbackUrl } from "@/lib/app-url";
+import { getAuthCallbackUrl } from "@/lib/app-url";
 import { getLearnerProfile } from "@/lib/learner-profile";
+import { authErrorDetails } from "@/lib/auth-errors";
 export async function POST(request: Request) {
   try {
     if (!isAllowedRequestOrigin(request))
@@ -83,16 +84,13 @@ export async function POST(request: Request) {
         profile?.role === "admin" ? "/admin/overview" : "/learn/dashboard",
     });
   } catch (e) {
-    return NextResponse.json(
-      {
-        error:
-          e instanceof z.ZodError
-            ? "Please check the form. Use a valid email and a password of at least eight characters."
-            : e instanceof Error
-              ? e.message
-              : "Unable to complete authentication.",
-      },
-      { status: e instanceof AppUrlConfigurationError ? 503 : 400 },
-    );
+    const failure = authErrorDetails(e);
+    if (failure.status === 429 || failure.status === 503) {
+      console.warn("Authentication unavailable", {
+        status: failure.status,
+        code: "code" in failure.body ? failure.body.code : "configuration",
+      });
+    }
+    return NextResponse.json(failure.body, { status: failure.status });
   }
 }

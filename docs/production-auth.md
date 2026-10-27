@@ -67,6 +67,14 @@ Test the same flow with signup on one browser and the new token-hash email opene
 
 Supabase's built-in test mailer restricts delivery to project-team addresses and is not intended for production. To send confirmations to arbitrary learner email addresses, configure your own SMTP service under Supabase's email settings. Keep SMTP credentials in Supabase's secure configuration; this application does not need them in its source code. No SMTP subscription or provider account is created automatically by this change.
 
+### Delivery failures and duplicate registrations
+
+A successful signup response does not prove inbox delivery. Supabase can also conceal an existing account behind a generic signup response. Check the Auth account and email-provider logs rather than repeatedly submitting signup or deleting profile rows.
+
+The API returns HTTP 429 and `email_rate_limited` when Supabase reports its email-sending limit. It returns HTTP 503 and `email_delivery_unavailable` when the configured mailer cannot send to a recipient. Both are failures, not confirmation-email success responses. Configure production SMTP and its sending limits before opening registration to learners; changing Next.js code or disabling Vercel protection cannot raise the mailer's quota.
+
+Also inspect the actual confirmation email's destination. If Supabase rejects the application's requested callback because it is missing from the redirect allow-list, the message can use the configured Site URL instead. An old Site URL such as `https://bookkeeping-reviewer-bookkeeping2.vercel.app` can therefore keep sending learners to a different deployment. Update the Site URL and allow-list above, apply the templates, and request a new email. Keep any older deployment addresses referenced by delivered emails publicly reachable while replacing those links.
+
 ## Technical checks
 
 ```powershell
