@@ -66,7 +66,9 @@ function isLocalHost(host: string): boolean {
 
 function publicOrigin(url: URL | null): string | null {
   return url?.protocol === "https:" && !isLocalHost(url.hostname)
-    ? url.origin
+    ? LEGACY_APP_HOSTS.includes(url.hostname)
+      ? CANONICAL_APP_ORIGIN
+      : url.origin
     : null;
 }
 
@@ -110,3 +112,4 @@ export function getAuthCallbackUrl(
   if (recovery) url.searchParams.set("next", "/reset-password");
   return url.toString();
 }
+import { CANONICAL_APP_ORIGIN, LEGACY_APP_HOSTS } from "./site-url";

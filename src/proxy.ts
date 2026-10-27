@@ -1,6 +1,18 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { getRootAuthRedirect } from "./lib/site-url";
 export async function proxy(request: NextRequest) {
+  if (request.nextUrl.pathname === "/") {
+    const target = getRootAuthRedirect(new URL(request.url));
+    return target
+      ? NextResponse.redirect(target, {
+          headers: {
+            "Cache-Control": "private, no-store",
+            "Referrer-Policy": "no-referrer",
+          },
+        })
+      : NextResponse.next({ request });
+  }
   let response = NextResponse.next({ request });
   if (
     !process.env.NEXT_PUBLIC_SUPABASE_URL ||
@@ -27,5 +39,11 @@ export async function proxy(request: NextRequest) {
   return response;
 }
 export const config = {
-  matcher: ["/learn/:path*", "/admin/:path*", "/api/:path*", "/auth/:path*"],
+  matcher: [
+    "/",
+    "/learn/:path*",
+    "/admin/:path*",
+    "/api/:path*",
+    "/auth/:path*",
+  ],
 };

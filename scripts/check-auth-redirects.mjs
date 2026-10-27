@@ -4,6 +4,20 @@ import assert from "node:assert/strict";
 const base = process.env.AUTH_CHECK_BASE_URL || "http://127.0.0.1:3107";
 const canonical = "https://bookkeeping-reviewer-2xwo.vercel.app";
 
+const misplaced = await fetch(
+  `${base}/?token_hash=validation-only&type=email`,
+  {
+    redirect: "manual",
+  },
+);
+assert.equal(misplaced.status, 307);
+assert.equal(
+  misplaced.headers.get("location"),
+  `${canonical}/auth/callback?token_hash=validation-only&type=email`,
+);
+assert.equal(misplaced.headers.get("referrer-policy"), "no-referrer");
+assert.match(misplaced.headers.get("cache-control"), /no-store/);
+
 for (const [query, expectedPath] of [
   ["error=access_denied", "/login?error=confirmation"],
   [
