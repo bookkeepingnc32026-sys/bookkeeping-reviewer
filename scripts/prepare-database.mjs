@@ -1,11 +1,12 @@
-import { readFile, writeFile } from "node:fs/promises";
+import { readdir, readFile, writeFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 
 export async function initialSetupSQL() {
-  const files = [
-    "202610190001_platform.sql",
-    "202610190002_content_guards.sql",
-  ];
+  const files = (
+    await readdir(new URL("../supabase/migrations/", import.meta.url))
+  )
+    .filter((name) => /^\d+_.+\.sql$/.test(name))
+    .sort();
   const sections = await Promise.all(
     files.map(async (name) => {
       const sql = await readFile(
@@ -16,7 +17,8 @@ export async function initialSetupSQL() {
       // transaction so either the entire fresh installation succeeds or none does.
       const body = sql
         .replace(/^begin;\s*$/gim, "")
-        .replace(/^commit;\s*$/gim, "");
+        .replace(/^commit;\s*$/gim, "")
+        .replace(/^notify pgrst, 'reload schema';\s*$/gim, "");
       return `-- Source: ${name}\n${body.trim()}`;
     }),
   );

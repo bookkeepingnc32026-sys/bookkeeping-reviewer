@@ -4,6 +4,7 @@ import { supabaseServer } from "@/lib/supabase/server";
 import { allRows } from "@/lib/pagination";
 import { isAllowedRequestOrigin } from "@/lib/request-origin";
 import { getAuthCallbackUrl } from "@/lib/app-url";
+import { getLearnerProfile } from "@/lib/learner-profile";
 const uuid = z.uuid();
 const profileSchema = z.object({
   full_name: z.string().trim().min(1).max(80),
@@ -35,7 +36,7 @@ function fail(e: unknown) {
     {
       error:
         message.includes("schema cache") || message.includes("does not exist")
-          ? "The database needs setup. Run both SQL files in supabase/migrations in filename order in your Supabase SQL editor, then reload."
+          ? "The learning database is temporarily unavailable. Please contact the site administrator."
           : message,
     },
     { status: 400 },
@@ -52,12 +53,7 @@ export async function GET() {
         { error: "Please log in to continue." },
         { status: 401 },
       );
-    const { data: profile, error } = await db
-      .from("profiles")
-      .select("*")
-      .eq("id", user.id)
-      .single();
-    if (error) throw error;
+    const profile = await getLearnerProfile(db, user.id);
     const queries = await Promise.all([
       allRows(
         db.from("competencies").select("*").order("sort_order").order("id"),
@@ -129,7 +125,7 @@ export async function GET() {
         .from("onboarding")
         .select("hints_seen")
         .eq("user_id", user.id)
-        .single(),
+        .maybeSingle(),
       db.from("exam_settings").select("*").eq("id", 1).single(),
       db.rpc("weekly_leaderboard"),
       allRows(
@@ -190,7 +186,8 @@ export async function GET() {
         results,
         flashProgress,
         badges: (badges as { badge_id: string }[]).map((b) => b.badge_id),
-        hints: (onboarding as { hints_seen: string[] }).hints_seen,
+        hints:
+          (onboarding as { hints_seen: string[] } | null)?.hints_seen ?? [],
         settings,
         leaderboard,
         activity,

@@ -3,6 +3,7 @@ import { z } from "zod";
 import { supabaseServer } from "@/lib/supabase/server";
 import { isAllowedRequestOrigin } from "@/lib/request-origin";
 import { AppUrlConfigurationError, getAuthCallbackUrl } from "@/lib/app-url";
+import { getLearnerProfile } from "@/lib/learner-profile";
 export async function POST(request: Request) {
   try {
     if (!isAllowedRequestOrigin(request))
@@ -76,11 +77,7 @@ export async function POST(request: Request) {
       password,
     });
     if (error) throw error;
-    const { data: profile } = await db
-      .from("profiles")
-      .select("role")
-      .eq("id", data.user.id)
-      .single();
+    const profile = await getLearnerProfile(db, data.user.id);
     return NextResponse.json({
       redirect:
         profile?.role === "admin" ? "/admin/overview" : "/learn/dashboard",
