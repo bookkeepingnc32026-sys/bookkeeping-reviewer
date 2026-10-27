@@ -12,7 +12,7 @@ const misplaced = await fetch(
 );
 assert.equal(misplaced.status, 307);
 assert.equal(
-  misplaced.headers.get("location"),
+  new URL(misplaced.headers.get("location"), base).toString(),
   `${canonical}/auth/callback?token_hash=validation-only&type=email`,
 );
 assert.equal(misplaced.headers.get("referrer-policy"), "no-referrer");

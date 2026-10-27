@@ -1,3 +1,5 @@
+import { CANONICAL_APP_ORIGIN, LEGACY_APP_HOSTS } from "./site-url";
+
 export type AppUrlEnvironment = {
   NEXT_PUBLIC_APP_URL?: string;
   VERCEL_PROJECT_PRODUCTION_URL?: string;
@@ -112,4 +114,3 @@ export function getAuthCallbackUrl(
   if (recovery) url.searchParams.set("next", "/reset-password");
   return url.toString();
 }
-import { CANONICAL_APP_ORIGIN, LEGACY_APP_HOSTS } from "./site-url";
