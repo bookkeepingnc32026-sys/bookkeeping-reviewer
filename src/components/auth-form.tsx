@@ -4,19 +4,30 @@ import Link from "next/link";
 import { ArrowLeft, ArrowRight, LoaderCircle } from "lucide-react";
 import { Brand } from "./brand";
 import { Button } from "./ui/button";
+export type AuthMode =
+  | "login"
+  | "signup"
+  | "forgot-password"
+  | "reset-password"
+  | "resend-confirmation";
 export function AuthForm({
   mode,
   configured,
+  initialError = "",
+  initialNotice = "",
 }: {
-  mode: "login" | "signup" | "forgot-password" | "reset-password";
+  mode: AuthMode;
   configured: boolean;
+  initialError?: string;
+  initialNotice?: string;
 }) {
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
+  const [error, setError] = useState(initialError);
+  const [success, setSuccess] = useState(initialNotice);
   const signup = mode === "signup",
     forgot = mode === "forgot-password",
-    reset = mode === "reset-password";
+    reset = mode === "reset-password",
+    resend = mode === "resend-confirmation";
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setBusy(true);
@@ -67,20 +78,24 @@ export function AuthForm({
           <h2>
             {signup
               ? "A fresh start."
-              : forgot
-                ? "Let’s get you back in."
-                : reset
-                  ? "Make a fresh start."
-                  : "Good to see you again."}
+              : resend
+                ? "Let's confirm your email."
+                : forgot
+                  ? "Let’s get you back in."
+                  : reset
+                    ? "Make a fresh start."
+                    : "Good to see you again."}
           </h2>
           <p>
             {signup
               ? "Your bookkeeping journey starts with one small step."
-              : forgot
-                ? "We’ll send you a link to reset your password."
-                : reset
-                  ? "Choose a strong password for your account."
-                  : "Pick up where you left off. Your next step is waiting."}
+              : resend
+                ? "Request a fresh link if your confirmation email expired or opened the wrong website."
+                : forgot
+                  ? "We’ll send you a link to reset your password."
+                  : reset
+                    ? "Choose a strong password for your account."
+                    : "Pick up where you left off. Your next step is waiting."}
           </p>
           {!configured && (
             <div className="setup-notice">
@@ -113,7 +128,7 @@ export function AuthForm({
                 />
               </label>
             )}
-            {!forgot && (
+            {!forgot && !resend && (
               <label className="field">
                 {reset ? "New password" : "Password"}
                 <input
@@ -148,11 +163,13 @@ export function AuthForm({
               {busy ? <LoaderCircle size={16} className="spin" /> : null}
               {signup
                 ? "Create your account"
-                : forgot
-                  ? "Send reset link"
-                  : reset
-                    ? "Update password"
-                    : "Log in"}
+                : resend
+                  ? "Send confirmation link"
+                  : forgot
+                    ? "Send reset link"
+                    : reset
+                      ? "Update password"
+                      : "Log in"}
               {!busy && <ArrowRight size={16} />}
             </Button>
           </form>
@@ -162,13 +179,20 @@ export function AuthForm({
             </p>
           ) : (
             <p className="auth-switch">
-              {forgot || reset ? (
+              {forgot || reset || resend ? (
                 <Link href="/login">Back to log in</Link>
               ) : (
                 <>
                   New here? <Link href="/signup">Start your journey</Link>
                 </>
               )}
+            </p>
+          )}
+          {(mode === "login" || (signup && success)) && (
+            <p className="auth-switch">
+              <Link className="inline-link" href="/resend-confirmation">
+                Resend confirmation email
+              </Link>
             </p>
           )}
           <Link className="auth-preview" href="/demo/dashboard">

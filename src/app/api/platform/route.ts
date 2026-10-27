@@ -3,6 +3,7 @@ import { z } from "zod";
 import { supabaseServer } from "@/lib/supabase/server";
 import { allRows } from "@/lib/pagination";
 import { isAllowedRequestOrigin } from "@/lib/request-origin";
+import { getAuthCallbackUrl } from "@/lib/app-url";
 const uuid = z.uuid();
 const profileSchema = z.object({
   full_name: z.string().trim().min(1).max(80),
@@ -301,10 +302,15 @@ export async function POST(request: Request) {
         });
         if (error || !data.user)
           throw new Error("Your current password is incorrect.");
-        const update = await db.auth.updateUser({
-          ...(changes.password ? { password: changes.password } : {}),
-          ...(changes.email ? { email: changes.email } : {}),
-        });
+        const update = await db.auth.updateUser(
+          {
+            ...(changes.password ? { password: changes.password } : {}),
+            ...(changes.email ? { email: changes.email } : {}),
+          },
+          changes.email
+            ? { emailRedirectTo: getAuthCallbackUrl(request) }
+            : undefined,
+        );
         result = update;
         break;
       }

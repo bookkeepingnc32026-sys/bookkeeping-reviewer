@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { supabaseServer } from "@/lib/supabase/server";
 import { isAllowedRequestOrigin } from "@/lib/request-origin";
+import { AppUrlConfigurationError, getAuthCallbackUrl } from "@/lib/app-url";
 export async function POST(request: Request) {
   try {
     if (!isAllowedRequestOrigin(request))
@@ -11,7 +12,6 @@ export async function POST(request: Request) {
       );
     const body = await request.json();
     const db = await supabaseServer();
-    const base = process.env.NEXT_PUBLIC_APP_URL || new URL(request.url).origin;
     if (body.action === "logout") {
       const { error } = await db.auth.signOut();
       if (error) throw error;
@@ -33,12 +33,24 @@ export async function POST(request: Request) {
     const email = z.email().parse(body.email);
     if (body.action === "forgot-password") {
       const { error } = await db.auth.resetPasswordForEmail(email, {
-        redirectTo: base + "/auth/callback?next=/reset-password",
+        redirectTo: getAuthCallbackUrl(request, true),
       });
       if (error) throw error;
       return NextResponse.json({
         message:
           "If an account exists for this address, a password reset link will arrive shortly.",
+      });
+    }
+    if (body.action === "resend-confirmation") {
+      const { error } = await db.auth.resend({
+        type: "signup",
+        email,
+        options: { emailRedirectTo: getAuthCallbackUrl(request) },
+      });
+      if (error) throw error;
+      return NextResponse.json({
+        message:
+          "If this address has an unconfirmed account, a new confirmation link will arrive shortly. Use the newest email.",
       });
     }
     const password = z.string().min(8).max(128).parse(body.password);
@@ -49,7 +61,7 @@ export async function POST(request: Request) {
         password,
         options: {
           data: { full_name },
-          emailRedirectTo: base + "/auth/callback",
+          emailRedirectTo: getAuthCallbackUrl(request),
         },
       });
       if (error) throw error;
@@ -83,7 +95,7 @@ export async function POST(request: Request) {
               ? e.message
               : "Unable to complete authentication.",
       },
-      { status: 400 },
+      { status: e instanceof AppUrlConfigurationError ? 503 : 400 },
     );
   }
 }

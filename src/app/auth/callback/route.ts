@@ -1,39 +1,38 @@
 import { NextResponse } from "next/server";
 import { supabaseServer } from "@/lib/supabase/server";
-import { safeNext } from "@/lib/utils";
+import { getAppOrigin } from "@/lib/app-url";
+import { verifyAuthCallback } from "@/lib/auth-callback";
 export async function GET(request: Request) {
   const url = new URL(request.url);
-  const db = await supabaseServer();
-  const code = url.searchParams.get("code");
-  const token_hash = url.searchParams.get("token_hash");
-  if (code) {
-    const { error } = await db.auth.exchangeCodeForSession(code);
-    if (!error)
-      return NextResponse.redirect(
-        new URL(safeNext(url.searchParams.get("next")), url.origin),
-      );
-  }
-  if (token_hash) {
-    const type = url.searchParams.get("type");
+  const headers = {
+    "Cache-Control": "private, no-store",
+    "Referrer-Policy": "no-referrer",
+  };
+  try {
+    const origin = getAppOrigin(request);
+    const db = await supabaseServer();
+    const result = await verifyAuthCallback(url, db.auth);
     if (
-      type === "email" ||
-      type === "recovery" ||
-      type === "signup" ||
-      type === "email_change"
+      result.verified &&
+      result.userId &&
+      !url.searchParams.has("next") &&
+      url.searchParams.get("type") !== "recovery"
     ) {
-      const { error } = await db.auth.verifyOtp({ token_hash, type });
-      if (!error)
-        return NextResponse.redirect(
-          new URL(
-            type === "recovery"
-              ? "/reset-password"
-              : safeNext(url.searchParams.get("next")),
-            url.origin,
-          ),
-        );
+      const { data: profile } = await db
+        .from("profiles")
+        .select("role")
+        .eq("id", result.userId)
+        .single();
+      if (profile?.role === "admin") result.path = "/admin/overview";
     }
+    return NextResponse.redirect(new URL(result.path, origin), { headers });
+  } catch {
+    return NextResponse.json(
+      {
+        error:
+          "Email confirmation is temporarily unavailable. Please contact the site administrator or try again later.",
+      },
+      { status: 503, headers },
+    );
   }
-  return NextResponse.redirect(
-    new URL("/login?error=confirmation", url.origin),
-  );
 }
