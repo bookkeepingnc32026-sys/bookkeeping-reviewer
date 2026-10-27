@@ -39,6 +39,8 @@ Local callback URLs may remain for isolated developer tests, but the shared proj
 
 ## 3. Apply the server-side email templates
 
+Free projects using Supabase's built-in email provider can reject template changes until custom SMTP is configured. If the dashboard or API reports that restriction, complete section 5 first, then apply these templates. Upgrading is not required when a supported custom SMTP provider is configured.
+
 Open **Authentication → Email → Templates** (the dashboard may label this area **Email Templates**). Replace the relevant email bodies with the matching repository files:
 
 | Supabase template    | Repository file                        |
